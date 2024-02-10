@@ -1,15 +1,18 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const {criarTransacao, listarTransacoesComSaldo} = require("./database")
 
 const app = express();
 
+const router = express.Router();
+
 app.use(bodyParser.json())
 
-app.get('/health', (req, res) => {
-  res.status(200);
+router.get('/health', (req, res) => {
+  return res.status(200);
 });
 
-app.post("/clients/:id/transacoes", async (req, res) => {
+router.post("/clientes/:id/transacoes", async (req, res) => {
   const { id } = req.params;
   const { valor, descricao, tipo } = req.body;
 
@@ -31,7 +34,7 @@ app.post("/clients/:id/transacoes", async (req, res) => {
   });
 });
 
-app.get("/clients/:id/extrato", async (req, res) => {
+router.get("/clientes/:id/extrato", async (req, res) => {
   const { id } = req.params;
 
   const result = await listarTransacoesComSaldo(id);
@@ -57,10 +60,10 @@ app.get("/clients/:id/extrato", async (req, res) => {
   return res.status(200).json(content);
 });
 
-app.use((_, res, _) => {
+app.use((_req, res, _next) => {
   return res.status(500);
 });
 
-app.listen(process.env.PORT, () => {
-  console.log('Server is running on port ${process.env.PORT}');
+app.listen(3000, () => {
+  console.log(`Server is running on port 3000`);
 });
