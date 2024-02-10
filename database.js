@@ -72,7 +72,7 @@ module.exports.criarTransacao = async function (clientId, valor, descricao) {
 
   const balance = saldo + limite;
 
-  if (isDebit && (valor > balance)) {
+  if (isDebit && (Math.abs(valor) > balance)) {
     await transaction.query('ROLLBACK');
     transaction.release();
     return {error: "balance"};
@@ -94,7 +94,7 @@ module.exports.criarTransacao = async function (clientId, valor, descricao) {
   transaction.release();
 
   return {
-    saldo: saldo - valor,
+    saldo: isDebit ? saldo - Math.abs(valor) : saldo + valor,
     limite
   };
 }

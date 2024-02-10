@@ -4,43 +4,50 @@ const {criarTransacao, listarTransacoesComSaldo} = require("./database")
 
 const app = express();
 
-const router = express.Router();
-
+app.use(express.json());
 app.use(bodyParser.json())
 
-router.get('/health', (req, res) => {
-  return res.status(200);
+app.get("/", (_req, res) => {
+  return res.status(200).send({ok: true});
 });
 
-router.post("/clientes/:id/transacoes", async (req, res) => {
+app.get('/health', (req, res) => {
+  return res.status(200).send({health: true});;
+});
+
+app.post("/clientes/:id/transacoes", async (req, res) => {
   const { id } = req.params;
   const { valor, descricao, tipo } = req.body;
 
-  const valorAtualizado = tipo === "debito" ? -valor : valor;
+  if (tipo !== "c" && tipo !== "d") {
+    return res.sendStatus(400);
+  }
+
+  const valorAtualizado = tipo === "d" ? valor * -1 : valor;
 
   const result = await criarTransacao(id, valorAtualizado, descricao);
 
   if (result === null) {
-    return res.status(404);
+    return res.sendStatus(404);
   }
 
   if (result.error === "balance") {
-    return res.status(422);
+    return res.sendStatus(422);
   }
 
-  return res.status(200).json({
+  return res.status(200).send({
     saldo: result.saldo,
     limite: result.limite
   });
 });
 
-router.get("/clientes/:id/extrato", async (req, res) => {
+app.get("/clientes/:id/extrato", async (req, res) => {
   const { id } = req.params;
 
   const result = await listarTransacoesComSaldo(id);
 
   if (result === null) {
-    return res.status(404);
+    return res.sendStatus(404);
   }
 
   const content = {
@@ -57,11 +64,11 @@ router.get("/clientes/:id/extrato", async (req, res) => {
     }),
   }
 
-  return res.status(200).json(content);
+  return res.status(200).send(content);
 });
 
 app.use((_req, res, _next) => {
-  return res.status(500);
+  return res.sendStatus(500);
 });
 
 app.listen(3000, () => {
