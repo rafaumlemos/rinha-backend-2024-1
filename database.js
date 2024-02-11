@@ -12,32 +12,32 @@ const pool = new pg.Pool({
 pool.on('error', connect);
 
 pool.once('connect', () => {
-  // return pool.query(`
-  //   CREATE UNLOGGED TABLE clientes (
-  //     id INTEGER PRIMARY KEY NOT NULL,
-  //     saldo INTEGER NOT NULL,
-  //     limite INTEGER NOT NULL
-  //   );
+  return pool.query(`
+    CREATE UNLOGGED TABLE clientes (
+      id INTEGER PRIMARY KEY NOT NULL,
+      saldo INTEGER NOT NULL,
+      limite INTEGER NOT NULL
+    );
 
-  //   CREATE UNLOGGED TABLE transacoes (
-  //       id SERIAL PRIMARY KEY,
-  //       cliente_id INTEGER NOT NULL,
-  //       valor INTEGER NOT NULL,
-  //       descricao VARCHAR(10) NOT NULL,
-  //       realizada_em TIMESTAMP NOT NULL DEFAULT NOW()
-  //   );
+    CREATE UNLOGGED TABLE transacoes (
+        id SERIAL PRIMARY KEY,
+        cliente_id INTEGER NOT NULL,
+        valor INTEGER NOT NULL,
+        descricao VARCHAR(10) NOT NULL,
+        realizada_em TIMESTAMP NOT NULL DEFAULT NOW()
+    );
 
-  //   CREATE INDEX ix_transacoes_cliente_id ON transacoes
-  //   (
-  //       cliente_id ASC
-  //   );
+    CREATE INDEX ix_transacoes_cliente_id ON transacoes
+    (
+        cliente_id ASC
+    );
 
-  //   INSERT INTO clientes (id, saldo, limite) VALUES (1, 0, 100000);
-  //   INSERT INTO clientes (id, saldo, limite) VALUES (2, 0, 80000);
-  //   INSERT INTO clientes (id, saldo, limite) VALUES (3, 0, 1000000);
-  //   INSERT INTO clientes (id, saldo, limite) VALUES (4, 0, 10000000);
-  //   INSERT INTO clientes (id, saldo, limite) VALUES (5, 0, 500000);
-  // `)
+    INSERT INTO clientes (id, saldo, limite) VALUES (1, 0, 100000);
+    INSERT INTO clientes (id, saldo, limite) VALUES (2, 0, 80000);
+    INSERT INTO clientes (id, saldo, limite) VALUES (3, 0, 1000000);
+    INSERT INTO clientes (id, saldo, limite) VALUES (4, 0, 10000000);
+    INSERT INTO clientes (id, saldo, limite) VALUES (5, 0, 500000);
+  `)
 });
 
 async function connect() {
