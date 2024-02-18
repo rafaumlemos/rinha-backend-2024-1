@@ -26,6 +26,7 @@ services:
         limits:
           cpus: '0.35'
           memory: '80MB'
+    restart: unless-stopped
   app2:
     <<: *app
     hostname: app2

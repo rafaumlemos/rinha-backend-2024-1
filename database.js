@@ -92,20 +92,19 @@ module.exports.criarTransacao = async function (clientId, valor, descricao) {
     VALUES ($1, $2, $3)
   `, [clientId, valor, descricao]);
 
-  await transaction.query(`
+  const newBalance = await transaction.query(`
     UPDATE clientes
     SET saldo = saldo + $1
     WHERE id = $2
+    RETURNING saldo
   `, [valor, clientId]);
 
   await transaction.query('COMMIT');
 
   transaction.release();
 
-  const result = isDebit ? saldo - Math.abs(valor) : saldo + valor;
-
   return {
-    saldo: parseFloat(result.toFixed(2)),
+    saldo: parseFloat(newBalance.rows[0].saldo),
     limite
   };
 }
