@@ -11,33 +11,42 @@ const pool = new pg.Pool({
 
 pool.on('error', connect);
 
-pool.once('connect', () => {
-  return pool.query(`
-    CREATE UNLOGGED TABLE clientes (
-      id INTEGER PRIMARY KEY NOT NULL,
-      saldo INTEGER NOT NULL,
-      limite INTEGER NOT NULL
-    );
+pool.once('connect', async () => {
+  const checkTablesQuery = await pool.query(`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+      AND (table_name = 'clientes' OR table_name = 'transacoes')
+  `);
 
-    CREATE UNLOGGED TABLE transacoes (
-        id SERIAL PRIMARY KEY,
-        cliente_id INTEGER NOT NULL,
-        valor INTEGER NOT NULL,
-        descricao VARCHAR(10) NOT NULL,
-        realizada_em TIMESTAMP NOT NULL DEFAULT NOW()
-    );
+  if (checkTablesQuery.rows.length === 0) {
+    return pool.query(`
+      CREATE UNLOGGED TABLE clientes (
+        id INTEGER PRIMARY KEY NOT NULL,
+        saldo NUMERIC NOT NULL,
+        limite NUMERIC NOT NULL
+      );
 
-    CREATE INDEX ix_transacoes_cliente_id ON transacoes
-    (
-        cliente_id ASC
-    );
+      CREATE UNLOGGED TABLE transacoes (
+          id SERIAL PRIMARY KEY,
+          cliente_id INTEGER NOT NULL,
+          valor NUMERIC NOT NULL,
+          descricao VARCHAR(10) NOT NULL,
+          realizada_em TIMESTAMP NOT NULL DEFAULT NOW()
+      );
 
-    INSERT INTO clientes (id, saldo, limite) VALUES (1, 0, 100000);
-    INSERT INTO clientes (id, saldo, limite) VALUES (2, 0, 80000);
-    INSERT INTO clientes (id, saldo, limite) VALUES (3, 0, 1000000);
-    INSERT INTO clientes (id, saldo, limite) VALUES (4, 0, 10000000);
-    INSERT INTO clientes (id, saldo, limite) VALUES (5, 0, 500000);
-  `)
+      CREATE INDEX ix_transacoes_cliente_id ON transacoes
+      (
+          cliente_id ASC
+      );
+
+      INSERT INTO clientes (id, saldo, limite) VALUES (1, 0, 100000);
+      INSERT INTO clientes (id, saldo, limite) VALUES (2, 0, 80000);
+      INSERT INTO clientes (id, saldo, limite) VALUES (3, 0, 1000000);
+      INSERT INTO clientes (id, saldo, limite) VALUES (4, 0, 10000000);
+      INSERT INTO clientes (id, saldo, limite) VALUES (5, 0, 500000);
+    `)
+  }
 });
 
 async function connect() {
@@ -67,8 +76,8 @@ module.exports.criarTransacao = async function (clientId, valor, descricao) {
     return null;
   }
 
-  const saldo = getSaldo.rows[0].saldo;
-  const limite = getSaldo.rows[0].limite;
+  const saldo = parseFloat(getSaldo.rows[0].saldo);
+  const limite = parseFloat(getSaldo.rows[0].limite);
 
   const balance = saldo + limite;
 
@@ -93,8 +102,10 @@ module.exports.criarTransacao = async function (clientId, valor, descricao) {
 
   transaction.release();
 
+  const result = isDebit ? saldo - Math.abs(valor) : saldo + valor;
+
   return {
-    saldo: isDebit ? saldo - Math.abs(valor) : saldo + valor,
+    saldo: parseFloat(result.toFixed(2)),
     limite
   };
 }

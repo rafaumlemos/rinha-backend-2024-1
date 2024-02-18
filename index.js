@@ -20,7 +20,15 @@ app.post("/clientes/:id/transacoes", async (req, res) => {
   const { valor, descricao, tipo } = req.body;
 
   if (tipo !== "c" && tipo !== "d") {
-    return res.sendStatus(400);
+    return res.sendStatus(422);
+  }
+
+  if (!descricao || descricao.length > 10) {
+    return res.sendStatus(422);
+  }
+
+  if (/^\d+$/.test(valor) === false) {
+    return res.sendStatus(422);
   }
 
   const valorAtualizado = tipo === "d" ? valor * -1 : valor;
@@ -52,23 +60,20 @@ app.get("/clientes/:id/extrato", async (req, res) => {
 
   const content = {
     saldo: {
-      total: result.saldo.saldo,
+      total: parseFloat(result.saldo.saldo),
       data_extrato: new Date().toISOString(),
-      limite: result.saldo.limite
+      limite: parseFloat(result.saldo.limite)
     },
     ultimas_transacoes: result.ultimas_transacoes.map(t => {
       return {
         ...t,
+        valor: Math.abs(parseFloat(t.valor)),
         tipo: t.valor < 0 ? "d" : "c"
       }
     }),
   }
 
   return res.status(200).send(content);
-});
-
-app.use((_req, res, _next) => {
-  return res.sendStatus(500);
 });
 
 app.listen(3000, () => {
