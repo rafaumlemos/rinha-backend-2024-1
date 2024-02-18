@@ -68,6 +68,8 @@ module.exports.criarTransacao = async function (clientId, valor, descricao) {
 
   const transaction = await pool.connect();
 
+  await transaction.query('BEGIN');
+
   const getSaldo = await transaction.query(`SELECT saldo, limite FROM clientes WHERE id = $1 FOR UPDATE`, [clientId]);
 
   if (getSaldo.rows.length === 0) {
