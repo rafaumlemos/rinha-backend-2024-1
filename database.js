@@ -5,6 +5,7 @@ const URL = process.env.DB_URL || 'postgres://postgres:password@localhost:5432/p
 const pool = new pg.Pool({
   connectionString: URL,
   max: (Number(process.env.DB_POOL) || 200),
+  min: (Number(process.env.DB_POOL) || 15),
   idleTimeoutMillis: 0,
   connectionTimeoutMillis: 10000
 });
@@ -21,28 +22,16 @@ pool.once('connect', async () => {
 
   if (checkTablesQuery.rows.length === 0) {
     return pool.query(`
-    SET statement_timeout = 0;
-    SET lock_timeout = 0;
-    SET idle_in_transaction_session_timeout = 0;
-    SET client_encoding = 'UTF8';
-    SET standard_conforming_strings = on;
-    SET check_function_bodies = false;
-    SET xmloption = content;
-    SET client_min_messages = warning;
-    SET row_security = off;
-    SET default_tablespace = '';
-    SET default_table_access_method = heap;
-
       CREATE UNLOGGED TABLE clientes (
         id INTEGER PRIMARY KEY NOT NULL,
-        saldo NUMERIC NOT NULL,
-        limite NUMERIC NOT NULL
+        saldo INTEGER NOT NULL,
+        limite INTEGER NOT NULL
       );
 
       CREATE UNLOGGED TABLE transacoes (
           id SERIAL PRIMARY KEY,
           cliente_id INTEGER NOT NULL,
-          valor NUMERIC NOT NULL,
+          valor INTEGER NOT NULL,
           descricao VARCHAR(10) NOT NULL,
           realizada_em TIMESTAMP NOT NULL DEFAULT NOW()
       );
@@ -126,25 +115,25 @@ module.exports.criarTransacao = async function (clientId, valor, descricao) {
 module.exports.listarTransacoesComSaldo = async function (clientId) {
   const transaction = await pool.connect();
 
-  const saldo = await transaction.query(`SELECT saldo, limite FROM clientes WHERE id = $1`, [clientId]);
+  const saldoPromise = transaction.query(`SELECT saldo, limite FROM clientes WHERE id = $1`, [clientId]);
 
-  if (saldo.rows.length === 0) {
-    transaction.release();
-    return null;
-  }
-
-  const transacoes = await transaction.query(`
+  const transacoesPromise = transaction.query(`
     SELECT
       valor,
       descricao,
       realizada_em
     FROM transacoes
     WHERE cliente_id = $1
-    ORDER BY realizada_em DESC
+    ORDER BY id DESC
     LIMIT 10
   `, [clientId]);
 
-  await transaction.query('COMMIT');
+  const [saldo, transacoes] = await Promise.all([saldoPromise, transacoesPromise]);
+
+  if (saldo.rows.length === 0) {
+    transaction.release();
+    return null;
+  }
 
   transaction.release();
 

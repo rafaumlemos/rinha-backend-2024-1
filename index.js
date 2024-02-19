@@ -27,11 +27,11 @@ app.post("/clientes/:id/transacoes", async (req, res) => {
     return res.sendStatus(422);
   }
 
-  if (valor % 1 !== 0) {
+  if (!Number.isInteger(valor)) {
     return res.sendStatus(422);
   }
 
-  if ([1, 2, 3, 4, 5].includes(parseInt(id)) === false) {
+  if (parseInt(id) > 5) {
     return res.sendStatus(404);
   }
 
@@ -56,11 +56,11 @@ app.post("/clientes/:id/transacoes", async (req, res) => {
 app.get("/clientes/:id/extrato", async (req, res) => {
   const { id } = req.params;
 
-  const result = await listarTransacoesComSaldo(id);
-
-  if (result === null) {
+  if (parseInt(id) > 5) {
     return res.sendStatus(404);
   }
+
+  const result = await listarTransacoesComSaldo(id);
 
   const content = {
     saldo: {
