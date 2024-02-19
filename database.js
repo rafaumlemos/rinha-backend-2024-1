@@ -21,6 +21,18 @@ pool.once('connect', async () => {
 
   if (checkTablesQuery.rows.length === 0) {
     return pool.query(`
+    SET statement_timeout = 0;
+    SET lock_timeout = 0;
+    SET idle_in_transaction_session_timeout = 0;
+    SET client_encoding = 'UTF8';
+    SET standard_conforming_strings = on;
+    SET check_function_bodies = false;
+    SET xmloption = content;
+    SET client_min_messages = warning;
+    SET row_security = off;
+    SET default_tablespace = '';
+    SET default_table_access_method = heap;
+
       CREATE UNLOGGED TABLE clientes (
         id INTEGER PRIMARY KEY NOT NULL,
         saldo NUMERIC NOT NULL,
@@ -35,7 +47,7 @@ pool.once('connect', async () => {
           realizada_em TIMESTAMP NOT NULL DEFAULT NOW()
       );
 
-      CREATE INDEX ix_transacoes_cliente_id ON transacoes
+      CREATE INDEX idx_transacoes_cliente_id ON transacoes
       (
           cliente_id ASC
       );
@@ -114,12 +126,9 @@ module.exports.criarTransacao = async function (clientId, valor, descricao) {
 module.exports.listarTransacoesComSaldo = async function (clientId) {
   const transaction = await pool.connect();
 
-  await transaction.query('BEGIN');
-
-  const saldo = await transaction.query(`SELECT saldo, limite FROM clientes WHERE id = $1 FOR UPDATE`, [clientId]);
+  const saldo = await transaction.query(`SELECT saldo, limite FROM clientes WHERE id = $1`, [clientId]);
 
   if (saldo.rows.length === 0) {
-    await transaction.query('ROLLBACK');
     transaction.release();
     return null;
   }
@@ -142,5 +151,57 @@ module.exports.listarTransacoesComSaldo = async function (clientId) {
   return {
     saldo: saldo.rows[0],
     ultimas_transacoes: transacoes.rows
+  };
+}
+
+module.exports.criarTransacaoTryHard = async function (clientId, valor, descricao) {
+  const isDebit = valor < 0;
+
+  const poolInstance = await pool.connect();
+
+  if (!isDebit) {
+    const credit = await poolInstance.query(`
+      UPDATE clientes
+      SET saldo = saldo + $1
+      WHERE id = $2
+      RETURNING saldo, limite
+    `, [valor, clientId]);
+
+    await poolInstance.query(`
+      INSERT INTO transacoes (cliente_id, valor, descricao)
+      VALUES ($1, $2, $3)
+    `, [clientId, valor, descricao]);
+
+    poolInstance.release();
+
+    return {
+      saldo: parseFloat(credit.rows[0].saldo),
+      limite: parseFloat(credit.rows[0].limite)
+    };
+  }
+
+  const debit = await poolInstance.query(`
+    UPDATE clientes
+    SET saldo = saldo + $1
+    WHERE id = $2
+    AND saldo + limite >= ABS($1)
+    RETURNING saldo, limite
+  `, [valor, clientId]);
+
+  if (debit.rows.length === 0) {
+    poolInstance.release();
+    return {error: "balance"};
+  }
+
+  await poolInstance.query(`
+    INSERT INTO transacoes (cliente_id, valor, descricao)
+    VALUES ($1, $2, $3)
+  `, [clientId, valor, descricao]);
+
+  poolInstance.release();
+
+  return {
+    saldo: parseFloat(debit.rows[0].saldo),
+    limite: parseFloat(debit.rows[0].limite)
   };
 }

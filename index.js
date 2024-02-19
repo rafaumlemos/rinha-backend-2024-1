@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const {criarTransacao, listarTransacoesComSaldo} = require("./database")
+const {criarTransacao, listarTransacoesComSaldo, criarTransacaoTryHard} = require("./database")
 
 const app = express();
 
@@ -27,13 +27,17 @@ app.post("/clientes/:id/transacoes", async (req, res) => {
     return res.sendStatus(422);
   }
 
-  if (/^\d+$/.test(valor) === false) {
+  if (valor % 1 !== 0) {
     return res.sendStatus(422);
+  }
+
+  if ([1, 2, 3, 4, 5].includes(parseInt(id)) === false) {
+    return res.sendStatus(404);
   }
 
   const valorAtualizado = tipo === "d" ? valor * -1 : valor;
 
-  const result = await criarTransacao(id, valorAtualizado, descricao);
+  const result = await criarTransacaoTryHard(id, valorAtualizado, descricao);
 
   if (result === null) {
     return res.sendStatus(404);
