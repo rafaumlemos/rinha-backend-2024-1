@@ -2,8 +2,7 @@ version: '3.4'
 
 services:
   app1: &app
-    # image: rafaumlemos/rinha-backend-2024-1:latest
-    build: .
+    image: rafaumlemos/rinha-backend-2024-1:latest
     hostname: app1
     environment:
       DB_URL: "postgres://postgres:password@postgres:5432/postgres"

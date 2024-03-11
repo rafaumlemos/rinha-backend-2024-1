@@ -1,6 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const {criarTransacao, listarTransacoesComSaldo, criarTransacaoTryHard} = require("./database")
+const {listarTransacoesComSaldo, criarTransacaoTryHard} = require("./database")
 
 const app = express();
 
